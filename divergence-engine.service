@@ -1,0 +1,23 @@
+[Unit]
+Description=Prediction Market x Financial Market Divergence Engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=/home/user/Prediction-Market-Financial-Market-Divergence-Engine
+ExecStart=/home/user/Prediction-Market-Financial-Market-Divergence-Engine/.venv/bin/divergence-engine run --watch --interval 300
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# 환경변수 (.env 파일 사용시)
+EnvironmentFile=-/home/user/Prediction-Market-Financial-Market-Divergence-Engine/.env
+
+# 메모리 제한 (안전장치)
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
