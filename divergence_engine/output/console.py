@@ -11,41 +11,39 @@ from divergence_engine.storage.models import DriftRecord
 console = Console()
 
 SIGNAL_COLORS = {
-    SignalType.LEAD.value: "yellow",
-    SignalType.LAG.value: "cyan",
-    SignalType.DIVERGENCE.value: "red",
-    SignalType.CONVERGENCE.value: "green",
+    SignalType.BUY_YES.value: "bold green",
+    SignalType.BUY_NO.value: "bold red",
+    SignalType.PRICED_IN.value: "dim",
     SignalType.NEUTRAL.value: "dim",
 }
 
 SIGNAL_ICONS = {
-    SignalType.LEAD.value: ">>",
-    SignalType.LAG.value: "<<",
-    SignalType.DIVERGENCE.value: "<>",
-    SignalType.CONVERGENCE.value: "==",
-    SignalType.NEUTRAL.value: "--",
+    SignalType.BUY_YES.value: ">>> BUY YES",
+    SignalType.BUY_NO.value: ">>> BUY NO",
+    SignalType.PRICED_IN.value: "=== PRICED IN",
+    SignalType.NEUTRAL.value: "--- NEUTRAL",
 }
 
 
-def display_top_divergences(records: list[DriftRecord], title: str = "Top Divergences") -> None:
-    """Display a rich table of top divergence records."""
+def display_top_divergences(records: list[DriftRecord], title: str = "Polymarket Entry Signals") -> None:
+    """Display a rich table of Polymarket entry opportunities."""
     if not records:
-        console.print("[dim]No divergence records found.[/dim]")
+        console.print("[dim]No signals found.[/dim]")
         return
 
     table = Table(title=title, show_lines=True)
     table.add_column("Event", style="bold", max_width=25)
-    table.add_column("Ticker", style="bold cyan")
-    table.add_column("ΔP", justify="right")
-    table.add_column("ΔA (norm)", justify="right")
+    table.add_column("Indicator", style="bold cyan")
+    table.add_column("ΔProb", justify="right")
+    table.add_column("ΔMarket", justify="right")
     table.add_column("Drift", justify="right")
     table.add_column("Z-Score", justify="right")
-    table.add_column("Signal", justify="center")
+    table.add_column("Signal", justify="center", min_width=15)
     table.add_column("Window", justify="right")
 
     for rec in records:
         color = SIGNAL_COLORS.get(rec.signal_type, "white")
-        icon = SIGNAL_ICONS.get(rec.signal_type, "??")
+        icon = SIGNAL_ICONS.get(rec.signal_type, rec.signal_type)
 
         z_str = f"{rec.z_score:.2f}" if rec.z_score is not None else "N/A"
         drift_color = "red" if abs(rec.drift) > 0.1 else "yellow" if abs(rec.drift) > 0.05 else "white"
@@ -56,8 +54,8 @@ def display_top_divergences(records: list[DriftRecord], title: str = "Top Diverg
             _format_pct(rec.delta_p),
             _format_pct(rec.delta_a_normalized),
             f"[{drift_color}]{rec.drift:+.4f}[/{drift_color}]",
-            f"[bold {color}]{z_str}[/bold {color}]",
-            f"[{color}]{icon} {rec.signal_type}[/{color}]",
+            f"[bold]{z_str}[/bold]",
+            f"[{color}]{icon}[/{color}]",
             f"{rec.window_hours}h",
         )
 
@@ -69,7 +67,7 @@ def display_mappings(mappings: list, resolved: list | None = None) -> None:
     table = Table(title="Event-Asset Mappings", show_lines=True)
     table.add_column("Event Slug", style="bold")
     table.add_column("Description")
-    table.add_column("Assets", style="cyan")
+    table.add_column("Indicators", style="cyan")
     table.add_column("Direction")
     table.add_column("Status")
 
@@ -107,7 +105,7 @@ def display_analysis_summary(total: int, anomalies: int) -> None:
     """Display a summary of an analysis run."""
     console.print()
     console.print(f"  Pairs analyzed:  [bold]{total}[/bold]")
-    console.print(f"  Anomalies found: [bold {'red' if anomalies > 0 else 'green'}]{anomalies}[/bold {'red' if anomalies > 0 else 'green'}]")
+    console.print(f"  Entry signals:   [bold {'green' if anomalies > 0 else 'dim'}]{anomalies}[/bold {'green' if anomalies > 0 else 'dim'}]")
     console.print()
 
 

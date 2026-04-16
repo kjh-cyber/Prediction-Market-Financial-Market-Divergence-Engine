@@ -1,7 +1,7 @@
-"""Signal classification for divergence events.
+"""Signal classification for Polymarket entry opportunities.
 
-Classifies the relationship between prediction market and financial market
-movements into actionable signal types.
+Detects when financial markets have moved but Polymarket probability
+hasn't adjusted yet → arbitrage / entry opportunity.
 """
 
 from __future__ import annotations
@@ -11,13 +11,12 @@ from enum import Enum
 
 
 class SignalType(str, Enum):
-    """Types of signals detected from drift analysis."""
+    """Types of signals — focused on Polymarket entry opportunities."""
 
-    LEAD = "lead"          # PM moved first, asset hasn't followed
-    LAG = "lag"            # Asset moved first, PM hasn't adjusted
-    DIVERGENCE = "divergence"  # Moving in opposite directions
-    CONVERGENCE = "convergence"  # Both moving together as expected
-    NEUTRAL = "neutral"    # No significant movement
+    BUY_YES = "BUY YES"      # Financial indicators say probability should be HIGHER
+    BUY_NO = "BUY NO"        # Financial indicators say probability should be LOWER
+    PRICED_IN = "PRICED IN"  # Both markets already aligned
+    NEUTRAL = "NEUTRAL"      # No significant movement
 
 
 @dataclass
@@ -41,16 +40,15 @@ def classify_signal(
     p_threshold: float = 0.03,
     a_threshold: float = 0.03,
 ) -> SignalResult:
-    """Classify the signal based on drift analysis.
+    """Classify the signal as a Polymarket entry opportunity.
 
-    Args:
-        delta_p: Change in prediction market probability.
-        delta_a_normalized: Normalized change in asset price.
-        drift: Calculated drift value.
-        z_score: Z-score of the drift (may be None).
-        direction: Expected correlation direction ("positive" or "inverse").
-        p_threshold: Minimum absolute ΔP to consider significant.
-        a_threshold: Minimum absolute normalized ΔA to consider significant.
+    Core logic:
+    - Financial indicator moved significantly but PM didn't → ENTRY opportunity
+    - Both moved in alignment → already PRICED IN
+    - Neither moved → NEUTRAL
+
+    For "positive" correlation: indicator ↑ means probability should ↑
+    For "inverse" correlation: indicator ↑ means probability should ↓
     """
     # Adjust asset direction for inverse correlation
     effective_a = -delta_a_normalized if direction == "inverse" else delta_a_normalized
@@ -58,7 +56,7 @@ def classify_signal(
     p_significant = abs(delta_p) >= p_threshold
     a_significant = abs(effective_a) >= a_threshold
 
-    # Neither moved significantly
+    # Neither moved
     if not p_significant and not a_significant:
         return SignalResult(
             signal_type=SignalType.NEUTRAL,
@@ -66,64 +64,90 @@ def classify_signal(
             delta_a_normalized=delta_a_normalized,
             drift=drift,
             z_score=z_score,
-            description="No significant movement in either market",
+            description="No significant movement",
         )
 
-    # PM moved but asset hasn't
-    if p_significant and not a_significant:
-        direction_str = "up" if delta_p > 0 else "down"
-        return SignalResult(
-            signal_type=SignalType.LEAD,
-            delta_p=delta_p,
-            delta_a_normalized=delta_a_normalized,
-            drift=drift,
-            z_score=z_score,
-            description=f"Prediction market moved {direction_str}, asset has not yet reacted",
-        )
-
-    # Asset moved but PM hasn't
+    # Financial indicator moved but PM hasn't → ENTRY OPPORTUNITY
     if a_significant and not p_significant:
-        direction_str = "up" if effective_a > 0 else "down"
-        return SignalResult(
-            signal_type=SignalType.LAG,
-            delta_p=delta_p,
-            delta_a_normalized=delta_a_normalized,
-            drift=drift,
-            z_score=z_score,
-            description=f"Asset moved {direction_str}, prediction market has not adjusted",
-        )
+        if effective_a > 0:
+            return SignalResult(
+                signal_type=SignalType.BUY_YES,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="Financial indicators ↑ but PM probability hasn't risen → BUY YES",
+            )
+        else:
+            return SignalResult(
+                signal_type=SignalType.BUY_NO,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="Financial indicators ↓ but PM probability hasn't dropped → BUY NO",
+            )
 
-    # Both moved — check if they agree or diverge
+    # PM moved but financial indicators haven't → PM may be overreacting
+    if p_significant and not a_significant:
+        if delta_p > 0:
+            return SignalResult(
+                signal_type=SignalType.BUY_NO,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="PM probability ↑ but financial indicators don't confirm → fade with NO",
+            )
+        else:
+            return SignalResult(
+                signal_type=SignalType.BUY_YES,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="PM probability ↓ but financial indicators don't confirm → fade with YES",
+            )
+
+    # Both moved — check alignment
     same_direction = (delta_p > 0 and effective_a > 0) or (delta_p < 0 and effective_a < 0)
 
     if same_direction:
         return SignalResult(
-            signal_type=SignalType.CONVERGENCE,
+            signal_type=SignalType.PRICED_IN,
             delta_p=delta_p,
             delta_a_normalized=delta_a_normalized,
             drift=drift,
             z_score=z_score,
-            description="Markets moving in alignment",
+            description="Already priced in — both markets aligned",
         )
     else:
-        pm_dir = "up" if delta_p > 0 else "down"
-        asset_dir = "up" if effective_a > 0 else "down"
-        return SignalResult(
-            signal_type=SignalType.DIVERGENCE,
-            delta_p=delta_p,
-            delta_a_normalized=delta_a_normalized,
-            drift=drift,
-            z_score=z_score,
-            description=f"Prediction market {pm_dir} but asset {asset_dir} — disagreement detected",
-        )
+        # Disagreement: trust financial markets over PM
+        if effective_a > 0:
+            return SignalResult(
+                signal_type=SignalType.BUY_YES,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="Markets disagree — financial indicators say YES, PM says NO",
+            )
+        else:
+            return SignalResult(
+                signal_type=SignalType.BUY_NO,
+                delta_p=delta_p,
+                delta_a_normalized=delta_a_normalized,
+                drift=drift,
+                z_score=z_score,
+                description="Markets disagree — financial indicators say NO, PM says YES",
+            )
 
 
 def rank_by_significance(signals: list[SignalResult]) -> list[SignalResult]:
     """Rank signals by significance (highest abs Z-score first)."""
     def sort_key(s: SignalResult) -> float:
         z = abs(s.z_score) if s.z_score is not None else 0.0
-        # Boost non-neutral signals
-        type_boost = 0.0 if s.signal_type == SignalType.NEUTRAL else 1.0
+        type_boost = 2.0 if s.signal_type in (SignalType.BUY_YES, SignalType.BUY_NO) else 0.0
         return z + type_boost
 
     return sorted(signals, key=sort_key, reverse=True)
