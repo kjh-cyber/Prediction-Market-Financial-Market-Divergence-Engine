@@ -1,0 +1,10 @@
+[Unit]
+Description=Divergence Engine backup timer (checks DB size every 30 min)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

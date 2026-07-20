@@ -1,0 +1,8 @@
+[Unit]
+Description=Divergence Engine — size-triggered backup to Windows (/mnt/c)
+After=divergence-engine.service
+
+[Service]
+Type=oneshot
+User=user
+ExecStart=/home/user/Prediction-Market-Financial-Market-Divergence-Engine/ops/backup-to-windows.sh

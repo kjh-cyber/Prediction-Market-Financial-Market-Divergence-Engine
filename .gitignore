@@ -20,3 +20,6 @@ env/
 
 *.log
 .DS_Store
+
+# backup runtime state
+ops/.last_backup_size_mb
