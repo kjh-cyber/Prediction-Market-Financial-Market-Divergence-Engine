@@ -1,178 +1,89 @@
 {
-  "resolved_markets": 11,
-  "resolved_yes": 2,
-  "resolved_no": 9,
-  "observations": 18570,
-  "base_rate_pos": 0.158,
-  "brier_model": 0.0378,
-  "brier_climatology": 0.133,
+  "source": "calibration.db (backfilled, official labels)",
+  "resolved_markets": 1200,
+  "resolved_yes": 279,
+  "resolved_no": 921,
+  "observations": 301980,
+  "base_rate_pos": 0.1538,
+  "brier_model": 0.0812,
+  "brier_climatology": 0.1301,
   "brier_p50": 0.25,
-  "brier_skill_vs_climatology": 0.7159,
+  "brier_skill_vs_climatology": 0.376,
   "reliability": [
     {
       "bin_lo": 0.0,
       "bin_hi": 0.1,
-      "n": 15512,
-      "mean_pred": 0.023423671995874158,
-      "frac_pos": 0.00012893243940175349
+      "n": 209490,
+      "mean_pred": 0.017277700606234188,
+      "frac_pos": 0.027017996085732014
     },
     {
       "bin_lo": 0.1,
       "bin_hi": 0.2,
-      "n": 113,
-      "mean_pred": 0.11636283185840707,
-      "frac_pos": 0.035398230088495575
+      "n": 24193,
+      "mean_pred": 0.14225841152399454,
+      "frac_pos": 0.21208614061918737
     },
     {
       "bin_lo": 0.2,
       "bin_hi": 0.30000000000000004,
-      "n": 579,
-      "mean_pred": 0.27131088082901555,
-      "frac_pos": 0.9896373056994818
+      "n": 15018,
+      "mean_pred": 0.24954000199760287,
+      "frac_pos": 0.334065787721401
     },
     {
       "bin_lo": 0.30000000000000004,
       "bin_hi": 0.4,
-      "n": 660,
-      "mean_pred": 0.3391984848484848,
-      "frac_pos": 0.9954545454545455
+      "n": 10979,
+      "mean_pred": 0.3497533017579014,
+      "frac_pos": 0.3844612441934602
     },
     {
       "bin_lo": 0.4,
       "bin_hi": 0.5,
-      "n": 115,
-      "mean_pred": 0.41353913043478263,
-      "frac_pos": 0.9739130434782609
+      "n": 10418,
+      "mean_pred": 0.44924301689383755,
+      "frac_pos": 0.4638126319831062
     },
     {
       "bin_lo": 0.5,
       "bin_hi": 0.6000000000000001,
-      "n": 16,
-      "mean_pred": 0.51446875,
-      "frac_pos": 0.6875
+      "n": 9615,
+      "mean_pred": 0.5485642485699428,
+      "frac_pos": 0.571086843473739
     },
     {
       "bin_lo": 0.6000000000000001,
       "bin_hi": 0.7000000000000001,
-      "n": 17,
-      "mean_pred": 0.647,
-      "frac_pos": 1.0
+      "n": 7936,
+      "mean_pred": 0.6499383820564516,
+      "frac_pos": 0.629914314516129
     },
     {
       "bin_lo": 0.7000000000000001,
       "bin_hi": 0.8,
-      "n": 435,
-      "mean_pred": 0.7714620689655173,
-      "frac_pos": 1.0
+      "n": 5120,
+      "mean_pred": 0.746533544921875,
+      "frac_pos": 0.6134765625
     },
     {
       "bin_lo": 0.8,
       "bin_hi": 0.9,
-      "n": 520,
-      "mean_pred": 0.8269865384615385,
-      "frac_pos": 1.0
+      "n": 4390,
+      "mean_pred": 0.8487105922551252,
+      "frac_pos": 0.7553530751708428
     },
     {
       "bin_lo": 0.9,
       "bin_hi": 1.0,
-      "n": 603,
-      "mean_pred": 0.9675389718076284,
-      "frac_pos": 1.0
-    }
-  ],
-  "per_market": [
-    {
-      "token_id": "104071616575689490708756996503755160411785604144351427331378560378097635400347",
-      "event_slug": "russia-ukraine-ceasefire-2026",
-      "outcome": 1,
-      "final_p": 0.995,
-      "last_ts": 1778354945,
-      "n_obs": 590
-    },
-    {
-      "token_id": "8441400852834915183759801017793514978104486628517653995211751018945988243154",
-      "event_slug": "gta-vi-release",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1780315805,
-      "n_obs": 1134
-    },
-    {
-      "token_id": "16201530957950630406397949502319734794139620443510795733205872225099141120819",
-      "event_slug": "macron-out",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1782885607,
-      "n_obs": 1842
-    },
-    {
-      "token_id": "13915689317269078219168496739008737517740566192006337297676041270492637394586",
-      "event_slug": "btc-150k",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1782886924,
-      "n_obs": 1893
-    },
-    {
-      "token_id": "51235596501564832537023408134904380563640337303980701826148309038597656403174",
-      "event_slug": "trump-putin-meet-japan",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1782891184,
-      "n_obs": 1846
-    },
-    {
-      "token_id": "43288083865319080926937534969874994520699917030230405886391675220165333252427",
-      "event_slug": "microsoft-acquire-tiktok",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1782895384,
-      "n_obs": 1851
-    },
-    {
-      "token_id": "22182218524437941832939283296300048452197919626911449433372235998276657200899",
-      "event_slug": "applovin-acquire-tiktok",
-      "outcome": 0,
-      "final_p": 0.0005,
-      "last_ts": 1782910625,
-      "n_obs": 1875
-    },
-    {
-      "token_id": "11807691644868166983390207408868795383945915035851758101409310535538572683733",
-      "event_slug": "trump-2028-election",
-      "outcome": 0,
-      "final_p": 0.0145,
-      "last_ts": 1784511676,
-      "n_obs": 2394
-    },
-    {
-      "token_id": "24327803960645909378149041810697343640752122608192367041827900158592826352552",
-      "event_slug": "weinstein-prison",
-      "outcome": 1,
-      "final_p": 0.962,
-      "last_ts": 1784511677,
-      "n_obs": 2344
-    },
-    {
-      "token_id": "94559586571241563470235664821564670251180951772614764383113614156422396181162",
-      "event_slug": "china-invade-taiwan-2026",
-      "outcome": 0,
-      "final_p": 0.0415,
-      "last_ts": 1784511677,
-      "n_obs": 2317
-    },
-    {
-      "token_id": "93694900555669388759405753550770573998169287228984912881955464376232163096213",
-      "event_slug": "btc-150k",
-      "outcome": 0,
-      "final_p": 0.0335,
-      "last_ts": 1784511679,
-      "n_obs": 484
+      "n": 4821,
+      "mean_pred": 0.9567708462974486,
+      "frac_pos": 0.9601742377100186
     }
   ],
   "caveats": [
-    "only 11 resolved markets (2 YES / 9 NO) \u2014 skewed, thin",
-    "observations are hourly time-series points, heavily autocorrelated within a market",
-    "resolution inferred from final extreme probability, not official settlement"
+    "1200 resolved markets (279 YES / 921 NO) backfilled from Polymarket with OFFICIAL settlement labels",
+    "observations are per-market time-series points, autocorrelated within a market \u2192 effective N < raw observation count",
+    "sample skews toward sports/longshot markets that mostly settle NO \u2014 base rate is low"
   ]
 }
