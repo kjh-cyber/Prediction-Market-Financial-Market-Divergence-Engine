@@ -1,0 +1,53 @@
+{
+  "start": "2005-01-01",
+  "end": "2026-07-17",
+  "tickers": [
+    "SPY",
+    "QQQ",
+    "AAPL",
+    "MSFT"
+  ],
+  "headline": "SPY",
+  "per_ticker": {
+    "SPY": {
+      "n": 5417,
+      "ci95": 0.0266,
+      "ret_acf_lag1": -0.1017,
+      "absret_acf_lag1": 0.318,
+      "momentum_hit": 0.4922,
+      "always_up_rate": 0.551,
+      "variance_ratio_q16": 0.749,
+      "vol_persistence_corr": 0.658
+    },
+    "QQQ": {
+      "n": 5417,
+      "ci95": 0.0266,
+      "ret_acf_lag1": -0.0822,
+      "absret_acf_lag1": 0.2495,
+      "momentum_hit": 0.4976,
+      "always_up_rate": 0.554,
+      "variance_ratio_q16": 0.798,
+      "vol_persistence_corr": 0.632
+    },
+    "AAPL": {
+      "n": 5417,
+      "ci95": 0.0266,
+      "ret_acf_lag1": -0.0213,
+      "absret_acf_lag1": 0.221,
+      "momentum_hit": 0.4965,
+      "always_up_rate": 0.5309,
+      "variance_ratio_q16": 0.959,
+      "vol_persistence_corr": 0.563
+    },
+    "MSFT": {
+      "n": 5417,
+      "ci95": 0.0266,
+      "ret_acf_lag1": -0.0941,
+      "absret_acf_lag1": 0.2479,
+      "momentum_hit": 0.4751,
+      "always_up_rate": 0.5154,
+      "variance_ratio_q16": 0.71,
+      "vol_persistence_corr": 0.537
+    }
+  }
+}
