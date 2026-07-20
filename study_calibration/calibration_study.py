@@ -188,28 +188,29 @@ def main():
     ax.legend(fontsize=8)
     fig.tight_layout(); fig.savefig(HERE / "cal_02_brier_vs_ttr.png"); plt.close(fig)
 
-    # ---- plot 3: probability trajectories (sampled if many) ----
+    # ---- plot 3: average path to resolution, split by realized outcome ----
     fig, ax = plt.subplots(figsize=(9, 5.5))
-    toks = list(obs["token_id"].unique())
-    SAMPLE = 80
-    sampled = toks if len(toks) <= SAMPLE else toks[::max(1, len(toks) // SAMPLE)][:SAMPLE]
-    annotate = len(sampled) <= 12
-    for tok in sampled:
-        d = obs[obs["token_id"] == tok].sort_values("timestamp")
-        oc = d["outcome"].iloc[0]
-        days = (d["timestamp"] - d["timestamp"].min()) / 86400
-        ax.plot(days, d["probability"], lw=0.8, alpha=0.45 if len(sampled) > 20 else 0.85,
-                color="#55A868" if oc == 1 else "#C44E52")
-        if annotate:
-            ax.annotate(d["event_slug"].iloc[0][:18], (days.iloc[-1], d["probability"].iloc[-1]),
-                        fontsize=6, color=MUTED)
-    ax.set_xlabel("관측 시작부터 경과일")
-    ax.set_ylabel("예측 확률")
-    ttl = "해결된 마켓 확률 궤적 (초록=YES 실현 / 빨강=NO 실현)"
-    if len(toks) > SAMPLE:
-        ttl += f"\n({len(toks)}개 중 {len(sampled)}개 샘플)"
-    ax.set_title(ttl)
+    o = obs.copy()
+    o["dtr"] = o["ttr_h"] / 24.0            # days to resolution (0 = resolution)
+    o = o[(o["dtr"] >= 0) & (o["dtr"] <= 120)]
+    edges = np.linspace(0, 120, 41)
+    mids = (edges[:-1] + edges[1:]) / 2
+    o["db"] = pd.cut(o["dtr"], edges, labels=mids)
+    for oc, color, lab in [(1, "#2e8b57", "YES 실현 마켓"), (0, "#C44E52", "NO 실현 마켓")]:
+        g = (o[o["outcome"] == oc].groupby("db", observed=True)["probability"]
+             .agg(mean="mean", q1=lambda s: s.quantile(0.25), q3=lambda s: s.quantile(0.75)))
+        g = g.reindex(mids).dropna()
+        x = g.index.to_numpy(dtype=float)
+        ax.fill_between(x, g["q1"], g["q3"], color=color, alpha=0.15)
+        ax.plot(x, g["mean"], color=color, lw=2.2, label=lab)
+    ax.axhline(0.5, color="#888", ls=":", lw=0.8)
+    ax.invert_xaxis()                       # resolution (dtr=0) on the right
+    ax.set_xlabel("해결까지 남은 일수  (오른쪽=해결 시점)")
+    ax.set_ylabel("평균 예측 확률 (밴드=사분위 25–75%)")
+    ax.set_title("해결 결과별 '평균 확률 경로'\n"
+                 "해결이 다가올수록 YES·NO 경로가 갈라짐")
     ax.set_ylim(-0.02, 1.02)
+    ax.legend(loc="center left", fontsize=9)
     fig.tight_layout(); fig.savefig(HERE / "cal_03_trajectories.png"); plt.close(fig)
 
     build_pdf(summary, rel_df, base_rate, b_model, b_clim, skill)
@@ -325,17 +326,22 @@ def build_pdf(S, rel_df, base_rate, b_model, b_clim, skill):
         (1, "해결이 가까운 구간엔 승부가 갈리는 접전 마켓이 섞여 오히려 어려움"),
         (1, "→ '임박할수록 정확'이라는 단순 서사는 이 표본에선 성립 안 함"),
     ], y0=0.87)
-    _img(fig, "cal_02_brier_vs_ttr.png", [0.10, 0.30, 0.80, 0.42])
+    _img(fig, "cal_02_brier_vs_ttr.png", [0.10, 0.11, 0.80, 0.40])
     _foot(fig, "p.4"); pdf.savefig(fig); plt.close(fig)
 
     # trajectories
-    fig = _page(pdf, "4. 해결 마켓 확률 궤적", "TRAJECTORIES")
+    fig = _page(pdf, "4. 해결 결과별 평균 확률 경로", "CONVERGENCE")
     _bullets(fig, [
-        (0, "궤적"),
-        (1, "초록=YES 실현 / 빨강=NO 실현. 대부분 시간이 갈수록 0 또는 1로 수렴"),
-        (1, "NO 수렴이 압도적 — 앞선 예측력 분석의 'base-rate NO drift'와 동일 현상"),
+        (0, "읽는 법"),
+        (1, "1,200개를 결과별로 묶어 '해결까지 남은 일수'에 정렬한 평균 확률 (밴드=25–75%)"),
+        (1, "x축 오른쪽이 해결 시점 — 그쪽으로 갈수록 진실이 드러남"),
+        (0, "관찰"),
+        (1, "YES 실현 마켓(초록)은 해결이 다가올수록 평균 확률이 상승(0.4→0.6+)"),
+        (1, "NO 실현 마켓(빨강)은 낮게 유지(~0.1) — 두 경로가 점점 벌어짐(시장이 방향 맞힘)"),
+        (1, "평균이 정확히 1·0에 안 닿는 건 CLOB max샘플링상 마지막 점이 정산 직전값이기 때문"),
+        (1, "먼 시점엔 두 경로가 낮게 몰림 — 초기엔 불확실"),
     ], y0=0.87)
-    _img(fig, "cal_03_trajectories.png", [0.07, 0.28, 0.86, 0.44])
+    _img(fig, "cal_03_trajectories.png", [0.09, 0.24, 0.82, 0.42])
     _foot(fig, "p.5"); pdf.savefig(fig); plt.close(fig)
 
     # conclusion
