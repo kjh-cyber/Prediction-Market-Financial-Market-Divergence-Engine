@@ -1,0 +1,87 @@
+{
+  "pairs": 64,
+  "corr0_mean_abs": 0.054,
+  "corr0_median_abs": 0.053,
+  "pairs_abs_ge_0.1": 7,
+  "pairs_abs_ge_0.2": 0,
+  "strongest": [
+    {
+      "event": "china-invade-taiwan-2026",
+      "ticker": "TSM",
+      "dir": "inverse",
+      "n": 382,
+      "corr0": -0.147,
+      "best_lag_h": -3,
+      "best_corr": 0.177
+    },
+    {
+      "event": "kraken-ipo",
+      "ticker": "COIN",
+      "dir": "positive",
+      "n": 78,
+      "corr0": -0.128,
+      "best_lag_h": 3,
+      "best_corr": 0.289
+    },
+    {
+      "event": "fed-rate-cut-2026",
+      "ticker": "DX-Y.NYB",
+      "dir": "positive",
+      "n": 1509,
+      "corr0": 0.123,
+      "best_lag_h": -1,
+      "best_corr": 0.124
+    },
+    {
+      "event": "russia-ukraine-ceasefire-2026",
+      "ticker": "CL=F",
+      "dir": "positive",
+      "n": 380,
+      "corr0": 0.122,
+      "best_lag_h": 0,
+      "best_corr": 0.122
+    },
+    {
+      "event": "china-invade-taiwan-2026",
+      "ticker": "SMH",
+      "dir": "inverse",
+      "n": 382,
+      "corr0": -0.113,
+      "best_lag_h": 0,
+      "best_corr": -0.113
+    },
+    {
+      "event": "trump-putin-meet-japan",
+      "ticker": "GC=F",
+      "dir": "positive",
+      "n": 1183,
+      "corr0": -0.108,
+      "best_lag_h": 0,
+      "best_corr": -0.108
+    },
+    {
+      "event": "gta-vi-release",
+      "ticker": "TTWO",
+      "dir": "positive",
+      "n": 188,
+      "corr0": -0.1,
+      "best_lag_h": 5,
+      "best_corr": 0.144
+    },
+    {
+      "event": "microsoft-acquire-tiktok",
+      "ticker": "MSFT",
+      "dir": "positive",
+      "n": 309,
+      "corr0": 0.098,
+      "best_lag_h": 3,
+      "best_corr": 0.098
+    }
+  ],
+  "pm_to_fin_fwd": {
+    "n": 194,
+    "hit_rate": 0.4845,
+    "horizon_h": 24,
+    "pm_move_thr": 0.03
+  }
+}
