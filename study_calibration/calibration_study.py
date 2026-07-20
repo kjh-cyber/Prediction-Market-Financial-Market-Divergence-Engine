@@ -30,7 +30,8 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
-DB = ROOT / "data" / "divergence.db"
+CAL_DB = ROOT / "data" / "calibration.db"          # backfilled resolved markets (real labels)
+DB = ROOT / "data" / "divergence.db"               # fallback (inferred labels)
 
 RES_HI, RES_LO = 0.95, 0.05          # resolution thresholds
 BINS = np.linspace(0, 1, 11)          # reliability bins (deciles)
@@ -48,21 +49,41 @@ A4 = (8.27, 11.69)
 
 
 def load_resolved():
+    """Prefer backfilled calibration.db (official resolution labels, many markets).
+    Fall back to inferring labels from divergence.db if the backfill isn't present."""
+    if CAL_DB.exists():
+        return _load_calibration_db()
+    return _load_inferred()
+
+
+def _load_calibration_db():
+    con = sqlite3.connect(CAL_DB)
+    mk = pd.read_sql_query(
+        "SELECT yes_token AS token_id, question AS event_slug, outcome, "
+        "end_ts AS last_ts FROM resolved_markets", con)
+    px = pd.read_sql_query(
+        "SELECT yes_token AS token_id, ts AS timestamp, p AS probability "
+        "FROM resolved_prices", con)
+    con.close()
+    obs = px.merge(mk, on="token_id", how="inner")
+    fp = obs.sort_values("timestamp").groupby("token_id")["probability"].last()
+    mk["final_p"] = mk["token_id"].map(fp)
+    obs["ttr_h"] = (obs["last_ts"] - obs["timestamp"]) / 3600.0
+    return mk, obs
+
+
+def _load_inferred():
     con = sqlite3.connect(DB)
     snap = pd.read_sql_query(
         "SELECT token_id, event_slug, probability, timestamp FROM prediction_snapshots", con)
     con.close()
-    # per-token final prob + last ts
     snap = snap.sort_values("timestamp")
     last = snap.groupby("token_id").tail(1).set_index("token_id")
     meta = []
     for tok, r in last.iterrows():
         fp = r["probability"]
-        if fp >= RES_HI:
-            outcome = 1
-        elif fp <= RES_LO:
-            outcome = 0
-        else:
+        outcome = 1 if fp >= RES_HI else (0 if fp <= RES_LO else None)
+        if outcome is None:
             continue
         meta.append({"token_id": tok, "event_slug": r["event_slug"],
                      "outcome": outcome, "final_p": fp, "last_ts": r["timestamp"]})
@@ -107,19 +128,25 @@ def main():
     b_half = brier(np.full_like(p, 0.5), y)
     skill = 1 - b_model / b_clim if b_clim > 0 else float("nan")
 
+    backfilled = CAL_DB.exists()
+    caveats = [
+        "observations are per-market time-series points, autocorrelated within a market → effective N < raw observation count",
+    ]
+    if backfilled:
+        caveats.insert(0, f"{n_res} resolved markets ({n_yes} YES / {n_no} NO) backfilled from Polymarket with OFFICIAL settlement labels")
+        caveats.append("sample skews toward sports/longshot markets that mostly settle NO — base rate is low")
+    else:
+        caveats.insert(0, f"only {n_res} resolved markets ({n_yes} YES / {n_no} NO) — skewed, thin (inferred labels)")
+        caveats.append("resolution inferred from final extreme probability, not official settlement")
+
     summary = {
+        "source": "calibration.db (backfilled, official labels)" if backfilled
+                  else "divergence.db (inferred labels)",
         "resolved_markets": n_res, "resolved_yes": n_yes, "resolved_no": n_no,
         "observations": int(len(obs)), "base_rate_pos": round(base_rate, 4),
         "brier_model": round(b_model, 4), "brier_climatology": round(b_clim, 4),
         "brier_p50": round(b_half, 4), "brier_skill_vs_climatology": round(skill, 4),
-        "reliability": rel,
-        "per_market": mdf.assign(
-            n_obs=mdf["token_id"].map(obs.groupby("token_id").size())).to_dict("records"),
-        "caveats": [
-            f"only {n_res} resolved markets ({n_yes} YES / {n_no} NO) — skewed, thin",
-            "observations are hourly time-series points, heavily autocorrelated within a market",
-            "resolution inferred from final extreme probability, not official settlement",
-        ],
+        "reliability": rel, "caveats": caveats,
     }
     (HERE / "calibration_summary.json").write_text(json.dumps(summary, indent=2, default=float))
 
@@ -161,20 +188,27 @@ def main():
     ax.legend(fontsize=8)
     fig.tight_layout(); fig.savefig(HERE / "cal_02_brier_vs_ttr.png"); plt.close(fig)
 
-    # ---- plot 3: probability trajectories ----
+    # ---- plot 3: probability trajectories (sampled if many) ----
     fig, ax = plt.subplots(figsize=(9, 5.5))
-    for tok, d in obs.groupby("token_id"):
-        d = d.sort_values("timestamp")
-        ev = d["event_slug"].iloc[0]
+    toks = list(obs["token_id"].unique())
+    SAMPLE = 80
+    sampled = toks if len(toks) <= SAMPLE else toks[::max(1, len(toks) // SAMPLE)][:SAMPLE]
+    annotate = len(sampled) <= 12
+    for tok in sampled:
+        d = obs[obs["token_id"] == tok].sort_values("timestamp")
         oc = d["outcome"].iloc[0]
         days = (d["timestamp"] - d["timestamp"].min()) / 86400
-        ax.plot(days, d["probability"], lw=1.0, alpha=0.8,
+        ax.plot(days, d["probability"], lw=0.8, alpha=0.45 if len(sampled) > 20 else 0.85,
                 color="#55A868" if oc == 1 else "#C44E52")
-        ax.annotate(ev[:18], (days.iloc[-1], d["probability"].iloc[-1]),
-                    fontsize=6, color=MUTED)
+        if annotate:
+            ax.annotate(d["event_slug"].iloc[0][:18], (days.iloc[-1], d["probability"].iloc[-1]),
+                        fontsize=6, color=MUTED)
     ax.set_xlabel("관측 시작부터 경과일")
     ax.set_ylabel("예측 확률")
-    ax.set_title("해결된 마켓 확률 궤적 (초록=YES 실현 / 빨강=NO 실현)")
+    ttl = "해결된 마켓 확률 궤적 (초록=YES 실현 / 빨강=NO 실현)"
+    if len(toks) > SAMPLE:
+        ttl += f"\n({len(toks)}개 중 {len(sampled)}개 샘플)"
+    ax.set_title(ttl)
     ax.set_ylim(-0.02, 1.02)
     fig.tight_layout(); fig.savefig(HERE / "cal_03_trajectories.png"); plt.close(fig)
 
@@ -227,30 +261,42 @@ def build_pdf(S, rel_df, base_rate, b_model, b_clim, skill):
              color="white", weight="bold")
     fig.text(0.5, 0.745, "— 60%라고 한 사건은 실제로 60% 일어나는가 —", ha="center",
              fontsize=12, color="#c7e8d8")
-    verdict = (f"해결 마켓 {S['resolved_markets']}개(YES {S['resolved_yes']}/NO {S['resolved_no']}) · "
-               f"관측 {S['observations']:,}\nBrier {b_model:.3f} (기저율 예측 {b_clim:.3f})\n"
-               f"※ 표본 얇음 — 예시적 분석")
+    tag = ("공식 정산 라벨 · 대량 표본" if "backfilled" in S.get("source", "")
+           else "※ 표본 얇음 — 예시적 분석")
+    verdict = (f"해결 마켓 {S['resolved_markets']:,}개(YES {S['resolved_yes']}/NO {S['resolved_no']}) · "
+               f"관측 {S['observations']:,}\nBrier {b_model:.3f} (기저율 예측 {b_clim:.3f})\n{tag}")
     fig.text(0.5, 0.52, verdict, ha="center", fontsize=13.5, color="#2a7a55",
              weight="bold", linespacing=1.7)
-    fig.text(0.5, 0.28, "데이터: 2026-04-16 ~ 2026-07-20 · 5분 주기 수집분\n작성일 2026-07-20",
-             ha="center", fontsize=10.5, color=MUTED, linespacing=2.0)
+    src = ("데이터: 이미 해결된 폴리마켓 이진 마켓 백필(공식 정산)"
+           if "backfilled" in S.get("source", "")
+           else "데이터: 2026-04-16 ~ 2026-07-20 수집분(추정 라벨)")
+    fig.text(0.5, 0.28, f"{src}\n작성일 2026-07-20", ha="center", fontsize=10.5,
+             color=MUTED, linespacing=2.0)
     _foot(fig, "p.1"); pdf.savefig(fig); plt.close(fig)
 
     # method
+    backfilled = "backfilled" in S.get("source", "")
     fig = _page(pdf, "1. 개요 및 방법", "OVERVIEW")
+    gt = ([
+        (0, "정답(ground truth) 확보 — 백필"),
+        (1, f"이미 해결된 폴리마켓 이진(Yes/No) 마켓 {S['resolved_markets']}개를 대량 수집"),
+        (1, "공식 정산 결과(YES 청산=1 / NO 청산=0)를 라벨로 사용 — 추정 아님"),
+        (1, "각 마켓의 YES 확률 이력(CLOB) 전체를 궤적으로 확보"),
+    ] if backfilled else [
+        (0, "정답(ground truth) 확보 — 추정"),
+        (1, f"수집분에서 해결된 {S['resolved_markets']}개만, 최종확률 극단(≥{RES_HI}/≤{RES_LO})을 결과로 간주"),
+    ])
     _bullets(fig, [
         (0, "질문"),
         (1, "예측시장이 매긴 확률이 실제 실현 빈도와 일치하는가(캘리브레이션)"),
-        (0, "정답(ground truth) 확보"),
-        (1, f"수집 기간 내 해결된 마켓만 채점 가능 — 최종확률 극단(≥{RES_HI}=YES, ≤{RES_LO}=NO)을 결과로 간주"),
-        (1, f"미해결(중간확률) 마켓 {19 - S['resolved_markets']}개는 제외"),
-        (0, "표본이 얇아 시계열 풀링"),
-        (1, "해결 마켓의 매 시점 확률 P_t 를 그 마켓의 확정 결과와 페어링 → 관측 다수 확보"),
-        (1, "'마켓 생애 전체에 대한 캘리브레이션' 관점 — 표준적이나 결정적 추정 아님"),
+        *gt,
+        (0, "채점 방식"),
+        (1, "각 마켓의 매 시점 확률 P_t 를 그 마켓의 확정 결과와 페어링"),
+        (1, "'마켓 생애 전체에 대한 캘리브레이션' 관점"),
         (0, "지표"),
         (2, "Reliability diagram — 예측확률 구간별 실현빈도"),
         (2, "Brier score — 평균((P-결과)²), 낮을수록 정확. 기저율 예측(climatology)과 비교"),
-    ], y0=0.86)
+    ], y0=0.88)
     _foot(fig, "p.2"); pdf.savefig(fig); plt.close(fig)
 
     # reliability
@@ -295,12 +341,17 @@ def build_pdf(S, rel_df, base_rate, b_model, b_clim, skill):
         (1, "skill>0 이면 시장이 기저율 대비 정보 우위, ≤0 이면 우위 없음"),
         (1, f"기저율(YES 비율) {base_rate:.2f} — 해결 마켓이 NO 편중이라 낮음"),
         (0, "한계 (해석 주의)"),
-        (2, f"해결 마켓 {S['resolved_markets']}개뿐(YES {S['resolved_yes']}/NO {S['resolved_no']}) — 통계적으로 얇고 편중"),
-        (2, "시계열 관측은 마켓 내 강한 자기상관 → 유효 표본은 관측수보다 훨씬 작음"),
-        (2, "해결을 최종 극단확률로 추정 — 공식 정산 아님(수집 중단 시점 확률일 수 있음)"),
+        *([
+            (2, "시계열 관측은 마켓 내 강한 자기상관 → 유효 표본은 관측수보다 작음"),
+            (2, f"표본이 스포츠·롱샷 마켓에 편중 → NO 결과·저확률 관측이 다수(기저율 {base_rate:.2f})"),
+            (2, "만기 임박 구간(확률이 이미 0/1 수렴)이 Brier 를 낙관적으로 만듦 → 잔여시간별 분해 참조"),
+          ] if "backfilled" in S.get("source", "") else [
+            (2, f"해결 마켓 {S['resolved_markets']}개뿐 — 통계적으로 얇고 편중"),
+            (2, "해결을 최종 극단확률로 추정 — 공식 정산 아님"),
+          ]),
         (0, "제언"),
-        (2, "제대로 하려면 해결 마켓 수를 늘려야 함 — 만기 임박·이미 해결된 마켓 다수 재수집"),
-        (2, "엔진을 캘리브레이션 수집 모드(해결 결과 라벨 저장)로 소규모 재가동하는 방안"),
+        (2, "확률 구간별 균형 표본(중간확률 마켓 가중) 확보 시 고확률 영역 캘리브레이션 신뢰도 상승"),
+        (2, "카테고리(정치/스포츠/크립토)별 캘리브레이션 분해 — 편향 원천 규명"),
     ], y0=0.88, dy=0.030)
     _foot(fig, "p.6"); pdf.savefig(fig); plt.close(fig)
     pdf.close()
