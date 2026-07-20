@@ -1,0 +1,97 @@
+{
+  "horizons": {
+    "6h": {
+      "BUY YES": {
+        "n": 14470,
+        "hits": 6657,
+        "hit_rate": 0.4601,
+        "ci95": [
+          0.4519,
+          0.4682
+        ]
+      },
+      "BUY NO": {
+        "n": 14453,
+        "hits": 7984,
+        "hit_rate": 0.5524,
+        "ci95": [
+          0.5443,
+          0.5605
+        ]
+      },
+      "ALL": {
+        "n": 28923,
+        "hits": 14641,
+        "hit_rate": 0.5062,
+        "ci95": [
+          0.5004,
+          0.512
+        ]
+      }
+    },
+    "24h": {
+      "BUY YES": {
+        "n": 22558,
+        "hits": 10116,
+        "hit_rate": 0.4484,
+        "ci95": [
+          0.442,
+          0.4549
+        ]
+      },
+      "BUY NO": {
+        "n": 22017,
+        "hits": 12458,
+        "hit_rate": 0.5658,
+        "ci95": [
+          0.5593,
+          0.5724
+        ]
+      },
+      "ALL": {
+        "n": 44575,
+        "hits": 22574,
+        "hit_rate": 0.5064,
+        "ci95": [
+          0.5018,
+          0.5111
+        ]
+      }
+    },
+    "72h": {
+      "BUY YES": {
+        "n": 25943,
+        "hits": 11553,
+        "hit_rate": 0.4453,
+        "ci95": [
+          0.4393,
+          0.4514
+        ]
+      },
+      "BUY NO": {
+        "n": 24698,
+        "hits": 14190,
+        "hit_rate": 0.5745,
+        "ci95": [
+          0.5684,
+          0.5807
+        ]
+      },
+      "ALL": {
+        "n": 50641,
+        "hits": 25743,
+        "hit_rate": 0.5083,
+        "ci95": [
+          0.504,
+          0.5127
+        ]
+      }
+    }
+  },
+  "meta": {
+    "db": "/home/user/Prediction-Market-Financial-Market-Divergence-Engine/data/divergence.db",
+    "outlier_clip": 1.0,
+    "downsample_seconds": 3600,
+    "tol_hours": 6
+  }
+}
