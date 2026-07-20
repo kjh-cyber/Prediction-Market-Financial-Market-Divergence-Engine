@@ -31,6 +31,7 @@ plt.rcParams["font.family"] = "NanumGothic"
 plt.rcParams["axes.unicode_minus"] = False
 
 S = json.loads((HERE / "backtest_summary.json").read_text())
+D = json.loads((HERE / "directional_diagnostic.json").read_text())
 A4 = (8.27, 11.69)
 INK = "#1a1a2e"
 MUTED = "#555"
@@ -107,11 +108,11 @@ def main():
              color="#a9b4e0", weight="bold")
     fig.text(0.5, 0.80, "Divergence 진입신호 예측력 검증", ha="center",
              fontsize=25, color="white", weight="bold")
-    fig.text(0.5, 0.755, "— Polymarket lead-lag 차익 가설의 백테스트 —",
-             ha="center", fontsize=12, color="#c7cde8")
-    concl = ("결론: 금융시장 → 폴리마켓 확률에 대한\n"
-             "유의한 예측력 미입증 (사실상 동전던지기)")
-    fig.text(0.5, 0.55, concl, ha="center", fontsize=15, color="#C44E52",
+    fig.text(0.5, 0.755, "— Polymarket ↔ 금융시장 양방향 lead-lag 가설의 백테스트 —",
+             ha="center", fontsize=11.5, color="#c7cde8")
+    concl = ("결론: 금융 ↔ 폴리마켓 양방향 모두 예측력 없음\n"
+             "원인은 방향이 아니라 커플링 자체의 부재")
+    fig.text(0.5, 0.55, concl, ha="center", fontsize=14.5, color="#C44E52",
              weight="bold", linespacing=1.6)
     meta = [f"검증 기간   {ST['first']} ~ {ST['last']}  ({ST['days']:.0f}일)",
             f"표본 규모   drift_records {ST['rows']:,}행 · 이벤트 {ST['events']}개 · 티커 {ST['tickers']}개",
@@ -238,26 +239,59 @@ def main():
     image_block(fig, "03_hitrate_by_strength.png", [0.10, 0.30, 0.80, 0.40])
     footer(fig, "p.7"); pdf.savefig(fig); plt.close(fig)
 
-    # ===== p8 결론·한계·운영 =====
-    fig = new_page(pdf, "7. 결론 · 한계 · 후속", "CONCLUSION")
+    # ===== p8 방향성 진단 — 동시점 커플링 =====
+    fig = new_page(pdf, "7. 방향성 진단 — 커플링 자체가 없음", "DIAGNOSTIC")
+    npair = D["pairs"]
     bullets(fig, [
-        (0, "결론"),
-        (1, "이 엔진의 lead-lag 차익 신호 기준, 금융→폴리마켓 예측력은 미입증"),
-        (1, "겉보기 적중은 전부 이벤트 확률의 NO 수렴(기저효과)로 설명됨"),
-        (0, "한계 (과잉해석 금지)"),
-        (2, "이벤트 19개·특정 정규화/임계값 설계에 대한 반증 — 일반적 무관계 증명 아님"),
-        (2, "방향 이동만 평가(모의 진입가), 실제 체결·수수료·슬리피지 미반영"),
-        (2, "표본이 지정학·거시 마켓에 편중, 다운샘플 후에도 완전 독립 아님(CI 낙관 가능)"),
-        (0, "후속 제안"),
-        (2, "기저 NO-drift 를 벤치마크로 차감한 초과수익(excess) 기준 재설계"),
-        (2, "역방향(폴리마켓→금융) 및 특정 이벤트군(연준 등) 한정 재검증"),
-        (2, "정규화 붕괴(변동성 0 근처 z-move 폭주) 코드 수정 — 하한 클리핑"),
-        (0, "데이터 운영 (부록)"),
-        (1, "라이브 DB 는 ext4 유지, 크기 임계값 초과 시 Windows(/mnt/c)로 자동 백업"),
-        (2, "systemd timer 30분 주기 · 온라인 .backup+gzip · 최근 10개 로테이션"),
-        (2, f"검증 산출물: reports/ (PNG 4종 · REPORT.md · 본 PDF)"),
-    ], y0=0.88, dy=0.030)
+        (0, "왜 이 진단을 했나"),
+        (1, "'금융→폴리'가 null 이면 반대(폴리→금융)로 갈아타야 하나? → 방향을 고르기 전에"),
+        (1, "  두 시장이 애초에 함께 움직이긴 하는지(커플링) 부터 확인함"),
+        (0, "동시점 상관 corr(ΔPM확률, 방향보정 Δ자산)"),
+        (1, f"매핑 {npair}쌍 전수: |corr| 평균 {D['corr0_mean_abs']} · 중앙값 {D['corr0_median_abs']}"),
+        (1, f"|corr|≥0.1 은 {D['pairs_abs_ge_0.1']}쌍뿐, ≥0.2 는 {D['pairs_abs_ge_0.2']}쌍 (하단 그래프: 전부 ±0.15 이내)"),
+        (1, "±0.1 넘는 소수마저 절반은 부호가 매핑 가정과 반대 → 신호 아닌 노이즈"),
+        (0, "함의"),
+        (2, "시간단위로 상관이 0 근처면 어느 방향이든 lead-lag 차익 성립 불가"),
+    ], y0=0.87)
+    image_block(fig, "05_contemporaneous_corr.png", [0.13, 0.05, 0.74, 0.50])
     footer(fig, "p.8"); pdf.savefig(fig); plt.close(fig)
+
+    # ===== p9 리드-랙 & 폴리→금융 =====
+    fig = new_page(pdf, "8. 리드-랙 & 폴리마켓 → 금융", "REVERSE")
+    fwd = D["pm_to_fin_fwd"]
+    bullets(fig, [
+        (0, "리드-랙 (누가 선행하나)"),
+        (1, "상관 상위 페어의 최대 |corr| 지연(k) 확인 — k<0 자산선행 / k=0 동시 / k>0 PM선행"),
+        (1, "일관된 선행 구조 없음(최적 lag -3/0/+3/+5 산발) → 시차 정보 아님"),
+        (0, "폴리마켓 → 금융 forward 적중률 (반대방향 직접 검증)"),
+        (1, f"PM 확률 큰 이동(|ΔP|≥{fwd['pm_move_thr']}) 후 +{fwd['horizon_h']}h 자산 방향 적중: "
+            f"{fwd['hit_rate']*100:.1f}% (n={fwd['n']})"),
+        (1, "50% 미만 → 폴리마켓도 금융을 선행하지 못함 → 반대방향도 사망 확인"),
+    ], y0=0.87)
+    image_block(fig, "06_leadlag_and_pm_to_fin.png", [0.06, 0.30, 0.88, 0.36])
+    footer(fig, "p.9"); pdf.savefig(fig); plt.close(fig)
+
+    # ===== p10 결론·한계·운영 =====
+    fig = new_page(pdf, "9. 결론 · 한계 · 후속", "CONCLUSION")
+    bullets(fig, [
+        (0, "최종 결론 (양방향 확정)"),
+        (1, "금융→폴리 50.6~50.8% · 폴리→금융 48.5% — 양방향 모두 예측력 없음"),
+        (1, "원인은 방향이 아니라 커플링 부재 — 매핑 64쌍 전부 |corr|<0.15"),
+        (1, "금융→폴리의 겉보기 적중은 이벤트 확률의 NO 수렴(기저효과)일 뿐"),
+        (0, "왜 커플링이 없나"),
+        (2, "대부분 마켓이 시그모이드 평탄부(행사가에서 멀어 확률이 가격에 둔감)"),
+        (2, "지정학 이벤트가 매핑 티커와 기계적으로 안 묶임 / 유일하게 움직인 연준도 DXY와 0.12"),
+        (0, "한계 (과잉해석 금지)"),
+        (2, "이벤트 19개·특정 매핑/설계에 대한 반증 — 예측·금융시장 일반적 무관계 증명 아님"),
+        (2, "방향 이동만 평가(모의 진입가), 실제 체결·수수료·슬리피지 미반영"),
+        (0, "후속 (방향 전환 아님 → 마켓 선정 교체)"),
+        (2, "강결합이면서도 비효율적인 마켓군 발굴 필요 (강결합은 동어반복이거나 이미 효율적)"),
+        (2, "정규화 붕괴(변동성 0 근처 z-move 폭주) 코드 수정 — 하한 클리핑"),
+        (0, "조치"),
+        (1, "연구 질문 종결(부정) → 엔진 정지·비활성화, 데이터 최종본 Windows 백업 완료"),
+        (2, "산출물: reports/ (PNG 6종 · REPORT/DIRECTIONAL_REPORT.md · 본 PDF)"),
+    ], y0=0.90, dy=0.0285)
+    footer(fig, "p.10"); pdf.savefig(fig); plt.close(fig)
 
     pdf.close()
     print("wrote", HERE / "divergence_signal_report.pdf")
